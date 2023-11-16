@@ -1,10 +1,19 @@
 import os
 import glob
 
-from adrb1 import HAPLOTYPES, MAPQ_MIN_THRESHOLD
+from adrb1 import HAPLOTYPES, MAPQ_MIN_THRESHOLD, INVALID_HAPLOTYPE
 
-def count_mapped_reads(bamfile):
-    return sum(1 for _ in bamfile.fetch())
+def seq_is_strand(seq_name):
+    return seq_name.endswith('fwd') or seq_name.endswith('rev')
+
+def num_strands(seq_name):
+    return 1 if seq_is_strand(seq_name) else 2
+
+def count_mapped_strands(bamfile):
+    count = 0
+    for seq in bamfile.fetch():
+        count += num_strands(seq.query_name)
+    return count
 
 def get_aligned_pos(pairs, pos):
     '''
@@ -25,19 +34,19 @@ def get_qc_metrics(bamfile) -> tuple:
         passed = True
         if alignment.mapping_quality < MAPQ_MIN_THRESHOLD:
             passed = False
-            reads_w_mapq_below_threshold += 1
+            reads_w_mapq_below_threshold += num_strands(alignment.query_name)
         pairs = alignment.get_aligned_pairs()
         aligned_pos_1 = get_aligned_pos(pairs, 144)
         aligned_pos_2 = get_aligned_pos(pairs, 1164)
         if aligned_pos_1 is None or aligned_pos_2 is None:
             passed = False
-            target_locus_not_found += 1
+            target_locus_not_found += num_strands(alignment.query_name)
         if passed:
             passing_reads.append(alignment)
     return passing_reads, reads_w_mapq_below_threshold, target_locus_not_found
 
 def get_haplotyped_read_names(passing_reads) -> tuple:
-    reads_by_haplotype = {ht: [] for ht in HAPLOTYPES + ('invalid',)}
+    reads_by_haplotype = {ht: [] for ht in HAPLOTYPES + (INVALID_HAPLOTYPE,)}
 
     for read in passing_reads:
         pairs = read.get_aligned_pairs()
@@ -49,7 +58,7 @@ def get_haplotyped_read_names(passing_reads) -> tuple:
         if haplotype in HAPLOTYPES:
             reads_by_haplotype[haplotype].append(read.query_name)
         else:
-            reads_by_haplotype['invalid'].append(read.query_name)
+            reads_by_haplotype[INVALID_HAPLOTYPE].append(read.query_name)
 
     return reads_by_haplotype
 
