@@ -1,4 +1,5 @@
 import os
+import glob
 
 from adrb1 import HAPLOTYPES, MAPQ_MIN_THRESHOLD
 
@@ -52,14 +53,23 @@ def get_haplotyped_read_names(passing_reads) -> tuple:
 
     return reads_by_haplotype
 
-def write_reads_by_haplotype(sample_name, reads_by_haplotype, failed_haplotyping):
+def write_reads_by_haplotype(sample_name, reads_by_haplotype):
     '''Write the read names for each haplotype to a file'''
-    os.makedirs(f'reads_by_haplotype/{sample_name}', exist_ok=True)
-    for ht in HAPLOTYPES:
-        with open(f'reads_by_haplotype/{sample_name}/haplotype_{ht}_reads.txt', 'w') as f:
+    path = f'reads_by_haplotype/{sample_name}'
+    os.makedirs(path, exist_ok=True)
+    with open(f'{path}/reads_by_haplotype.csv', 'w') as f:
+        for ht in reads_by_haplotype:
             for read_name in reads_by_haplotype[ht]:
-                f.write(read_name + '\n')
-    with open(f'reads_by_haplotype/{sample_name}/haplotype_unknown_reads.txt', 'w') as f:
-        for read_name in failed_haplotyping:
-            f.write(read_name + '\n')
+                f.write(f'{ht},{read_name}\n')
+
+def get_bam_path(sample_name):
+    '''Get bam file or handle missing or too many bam files'''
+    sample_bam_dir = f'bam/{sample_name}/'
+    bam_files = glob.glob(f'{sample_bam_dir}/*.bam')
+    if not bam_files:
+        print(f'No bam files found in {sample_bam_dir}')
+        return None
+    else:
+        assert len(bam_files) == 1, f'Found more than one bam file in {sample_bam_dir}'
+    return bam_files[0]
 

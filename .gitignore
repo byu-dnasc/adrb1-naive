@@ -2,3 +2,4 @@ bam
 haplotype_counts.tsv
 .vscode
 __pycache__
+reads_by_haplotype

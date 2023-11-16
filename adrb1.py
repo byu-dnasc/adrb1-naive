@@ -1,22 +1,10 @@
 import pysam
 import os
-import glob
 
 import functions
 
 HAPLOTYPES = ('ag', 'ac', 'gc', 'gg')
 MAPQ_MIN_THRESHOLD = 60
-
-def get_bam_path(sample_name):
-    '''Get bam file or handle missing or too many bam files'''
-    sample_bam_dir = f'bam/{sample_name}/'
-    bam_files = glob.glob(f'{sample_bam_dir}/*.bam')
-    if not bam_files:
-        print(f'No bam files found in {sample_bam_dir}')
-        return None
-    else:
-        assert len(bam_files) == 1, f'Found more than one bam file in {sample_bam_dir}'
-    return bam_files[0]
 
 if __name__ == '__main__':
 
@@ -24,12 +12,12 @@ if __name__ == '__main__':
     assert sample_names, 'No samples found in bam directory'
     rows = []
     for sample_name in sample_names:
-        bam_path = get_bam_path(sample_name)
+        bam_path = functions.get_bam_path(sample_name)
         if bam_path is None: continue
         bamfile = pysam.AlignmentFile(bam_path, 'rb')
         passing_reads, num_reads_w_mapq_below_threshold, times_target_locus_not_found = functions.get_qc_metrics(bamfile)
         reads_by_haplotype = functions.get_haplotyped_read_names(passing_reads)
-        # functions.write_reads_by_haplotype(sample_name, reads_by_haplotype)
+        functions.write_reads_by_haplotype(sample_name, reads_by_haplotype)
         total_mapped_reads = functions.count_mapped_reads(bamfile)
         reads_passing_qc = total_mapped_reads - num_reads_w_mapq_below_threshold - times_target_locus_not_found - len(reads_by_haplotype['invalid'])
         ht_counts = tuple([len(reads_by_haplotype[ht]) for ht in HAPLOTYPES])
